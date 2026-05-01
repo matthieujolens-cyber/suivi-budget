@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Budget Hyperfluid</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-logo" src="assets/hyperfluid-logo.png" alt="Hyperfluid" />
+          <div>
+            <strong>Budget Hyperfluid</strong>
+            <span>Prévu vs réel par projet</span>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="Navigation principale">
+          <a href="#dashboard">Tableau de bord</a>
+          <a href="#budgets">Budgets</a>
+          <a href="#depenses">Dépenses</a>
+          <a href="#alertes">Alertes</a>
+        </nav>
+
+        <div class="local-note">
+          Données locales
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p id="projectEyebrow" class="eyebrow">Projet Hyperfluid App V2</p>
+            <h1>Pilotage mensuel des dépenses</h1>
+          </div>
+
+          <div class="toolbar" aria-label="Actions principales">
+            <label class="field project-field">
+              <span>Projet</span>
+              <select id="projectPicker"></select>
+            </label>
+            <label class="field archived-field">
+              <span>Archivés</span>
+              <span class="check-control">
+                <input id="showArchivedToggle" type="checkbox" />
+                Afficher
+              </span>
+            </label>
+            <div class="project-actions" aria-label="Gestion des projets">
+              <button id="addProjectBtn" class="button secondary" type="button">
+                Nouveau projet
+              </button>
+              <button id="archiveProjectBtn" class="button secondary" type="button">
+                Archiver
+              </button>
+              <button id="deleteProjectBtn" class="button danger" type="button">
+                Supprimer
+              </button>
+            </div>
+            <label class="field compact-field">
+              <span>Mois</span>
+              <input id="monthPicker" type="month" />
+            </label>
+            <button id="copyPreviousBtn" class="button secondary" type="button">
+              Copier le mois précédent
+            </button>
+            <button id="exportCsvBtn" class="button primary" type="button">
+              Export CSV
+            </button>
+          </div>
+        </header>
+
+        <section id="dashboard" class="metrics-grid" aria-label="Indicateurs du mois">
+          <article class="metric-card">
+            <span>Budget prévu</span>
+            <strong id="plannedTotal">0 €</strong>
+          </article>
+          <article class="metric-card">
+            <span>Réel dépensé</span>
+            <strong id="actualTotal">0 €</strong>
+          </article>
+          <article class="metric-card">
+            <span>Écart</span>
+            <strong id="varianceTotal">0 €</strong>
+          </article>
+          <article class="metric-card">
+            <span>Consommation</span>
+            <strong id="usageRate">0 %</strong>
+          </article>
+        </section>
+
+        <section id="budgets" class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="section-kicker">Budgets</p>
+              <h2>Prévisionnel vs réel par ligne</h2>
+            </div>
+          </div>
+
+          <div class="table-shell">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Catégorie</th>
+                  <th>Budget prévu</th>
+                  <th>Réel</th>
+                  <th>Écart</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="budgetTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="split-grid" aria-label="Graphiques">
+          <article class="panel chart-panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Catégories</p>
+                <h2>Lecture du mois</h2>
+              </div>
+            </div>
+            <canvas id="categoryChart" class="chart-canvas" aria-label="Budget et dépenses par catégorie"></canvas>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Tendance</p>
+                <h2>Six derniers mois</h2>
+              </div>
+            </div>
+            <canvas id="trendChart" class="chart-canvas" aria-label="Budget et dépenses des six derniers mois"></canvas>
+          </article>
+        </section>
+
+        <section id="depenses" class="split-grid align-start">
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Saisie</p>
+                <h2>Nouvelle dépense réelle</h2>
+              </div>
+            </div>
+
+            <form id="expenseForm" class="expense-form">
+              <label class="field">
+                <span>Date</span>
+                <input id="expenseDate" type="date" required />
+              </label>
+
+              <label class="field">
+                <span>Catégorie</span>
+                <select id="expenseCategory" required></select>
+              </label>
+
+              <label class="field">
+                <span>Ligne budget</span>
+                <select id="expenseLine" required></select>
+              </label>
+
+              <label class="field">
+                <span>Fournisseur</span>
+                <input id="expenseVendor" type="text" placeholder="AWS, Stripe, Notion..." required />
+              </label>
+
+              <label class="field">
+                <span>Montant réel</span>
+                <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="0.00" required />
+              </label>
+
+              <label class="field">
+                <span>Type</span>
+                <select id="expenseRecurrence">
+                  <option value="Récurrent">Récurrent</option>
+                  <option value="Ponctuel">Ponctuel</option>
+                </select>
+              </label>
+
+              <label class="field full-span">
+                <span>Note</span>
+                <textarea id="expenseNote" rows="3" placeholder="Contrat annuel, dépassement, remise..."></textarea>
+              </label>
+
+              <button class="button primary full-span" type="submit">
+                Ajouter la dépense
+              </button>
+            </form>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Réel</p>
+                <h2>Dépenses du mois</h2>
+              </div>
+            </div>
+
+            <div class="table-shell expense-table-shell">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Fournisseur</th>
+                    <th>Catégorie</th>
+                    <th>Ligne</th>
+                    <th>Montant</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="expenseTableBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section id="alertes" class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="section-kicker">Contrôle</p>
+              <h2>Points à surveiller</h2>
+            </div>
+          </div>
+          <div id="alertsList" class="alerts-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
