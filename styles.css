@@ -223,6 +223,10 @@ h2 {
   margin-bottom: 16px;
 }
 
+.compact-metrics {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .metric-card,
 .panel {
   border: 1px solid var(--line);
@@ -237,6 +241,11 @@ h2 {
   flex-direction: column;
   justify-content: space-between;
   padding: 18px;
+}
+
+.metric-card.small {
+  min-height: 104px;
+  padding: 15px;
 }
 
 .metric-card span {
@@ -297,6 +306,14 @@ h2 {
   display: block;
 }
 
+.chart-canvas.tall {
+  height: 340px;
+}
+
+.chart-feature {
+  min-height: 360px;
+}
+
 .table-shell {
   overflow-x: auto;
 }
@@ -304,7 +321,7 @@ h2 {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 900px;
+  min-width: 1040px;
 }
 
 .data-table th {
@@ -387,6 +404,16 @@ h2 {
   text-align: right;
 }
 
+.lot-select {
+  width: min(190px, 100%);
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 0 10px;
+}
+
 .line-name-input {
   width: min(260px, 100%);
   min-height: 38px;
@@ -415,6 +442,24 @@ h2 {
   font-size: 0.84rem;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.table-subtext {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.file-link {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.file-link:hover,
+.file-link:focus {
+  text-decoration: underline;
 }
 
 .expense-form {
@@ -489,6 +534,11 @@ h2 {
   max-height: 432px;
 }
 
+.lots-table,
+.invoice-table {
+  min-width: 760px;
+}
+
 .muted-row {
   color: var(--muted);
 }
@@ -558,6 +608,10 @@ h2 {
   .metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .compact-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
@@ -603,5 +657,13 @@ h2 {
 
   .chart-canvas {
     height: 245px;
+  }
+
+  .chart-canvas.tall {
+    height: 280px;
+  }
+
+  .compact-metrics {
+    grid-template-columns: 1fr;
   }
 }
