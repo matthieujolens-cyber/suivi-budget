@@ -28,8 +28,38 @@
         </nav>
 
         <div class="local-note">
-          Données locales
+          <strong id="storageModeLabel">Données locales</strong>
+          <span id="storageModeDetail">Connexion cloud non configurée</span>
         </div>
+
+        <section class="account-panel" aria-label="Compte utilisateur">
+          <div class="account-header">
+            <strong>Compte</strong>
+            <span id="authStatus">Mode local</span>
+          </div>
+
+          <form id="authForm" class="account-form">
+            <label>
+              <span>Email</span>
+              <input id="authEmail" type="email" autocomplete="email" placeholder="email@hyperfluid.fr" />
+            </label>
+            <label>
+              <span>Mot de passe</span>
+              <input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••" />
+            </label>
+            <div class="account-actions">
+              <button id="loginBtn" class="button secondary" type="submit">Connexion</button>
+              <button id="signupBtn" class="button secondary" type="button">Créer</button>
+            </div>
+          </form>
+
+          <div id="accountActions" class="account-actions hidden">
+            <button id="syncCloudBtn" class="button secondary" type="button">Synchroniser</button>
+            <button id="logoutBtn" class="button danger" type="button">Déconnexion</button>
+          </div>
+
+          <p id="cloudMessage" class="account-message">Renseigne Supabase pour activer le cloud.</p>
+        </section>
       </aside>
 
       <main class="workspace">
@@ -479,6 +509,8 @@
       </main>
     </div>
 
+    <script src="supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
   </body>
 </html>
