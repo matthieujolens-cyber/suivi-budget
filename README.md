@@ -6,7 +6,9 @@ Petite application locale pour suivre les dépenses mensuelles des projets Hyper
 
 Double-clique sur `index.html`.
 
-L'application fonctionne sans installation et sans compte. Les données sont sauvegardées dans le navigateur avec `localStorage`.
+L'application fonctionne sans installation. Par défaut, les données sont sauvegardées dans le navigateur avec `localStorage`.
+
+Si Supabase est configuré, tu peux te connecter avec un compte utilisateur et synchroniser les données dans une base cloud.
 
 ## Ce que tu peux faire
 
@@ -44,7 +46,31 @@ Options simples :
 - Vercel ;
 - un hébergement web classique.
 
-Important : les données restent dans le navigateur de chaque utilisateur. Si tu veux plusieurs utilisateurs avec les mêmes données, il faudra ajouter une vraie base de données.
+Important : sans Supabase, les données restent dans le navigateur de chaque utilisateur. Avec Supabase, elles sont synchronisées dans la base cloud du compte connecté.
+
+## Comptes utilisateurs et base de données
+
+Cette version prépare Supabase avec une synchronisation simple : chaque utilisateur possède un espace `Budget Hyperfluid` sauvegardé en JSON dans PostgreSQL.
+
+Étapes :
+
+1. Crée un projet sur Supabase.
+2. Dans Supabase, ouvre `SQL Editor`.
+3. Copie-colle le contenu de `supabase-schema.sql`, puis exécute-le.
+4. Dans Supabase, va dans `Project Settings` puis `API`.
+5. Copie l'URL du projet et la clé publique `anon`.
+6. Ouvre `supabase-config.js` et renseigne :
+
+```js
+window.BUDGET_HYPERFLUID_SUPABASE = {
+  url: "https://TON-PROJET.supabase.co",
+  anonKey: "TA-CLE-ANON",
+};
+```
+
+Après ça, recharge l'application. Le bloc `Compte` dans la barre latérale permettra de créer un compte, se connecter, se déconnecter et synchroniser.
+
+La table cloud est protégée par Row Level Security : chaque utilisateur ne lit et ne modifie que ses propres données.
 
 ## Projets disponibles
 
@@ -59,4 +85,6 @@ Important : les données restent dans le navigateur de chaque utilisateur. Si tu
 - `index.html` : la page de l'application ;
 - `styles.css` : l'apparence ;
 - `app.js` : la logique et la sauvegarde locale.
+- `supabase-config.js` : configuration Supabase.
+- `supabase-schema.sql` : schéma SQL à exécuter dans Supabase.
 - `assets/hyperfluid-logo.png` : le logo affiché dans la barre latérale.

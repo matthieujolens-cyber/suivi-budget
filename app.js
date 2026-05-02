@@ -1,6 +1,8 @@
 const STORAGE_KEY = "budget-saas-v1";
 const DEFAULT_PROJECT_ID = "app-v2";
 const NO_LOT = "";
+const CLOUD_TABLE = "budget_workspaces";
+const CLOUD_WORKSPACE_NAME = "Budget Hyperfluid";
 
 const defaultProjects = [
   { id: "app-v2", label: "Application V2", eyebrow: "Projet Hyperfluid App V2", archived: false },
@@ -38,6 +40,18 @@ const defaultLineTemplates = [
 
 const elements = {
   projectPicker: document.querySelector("#projectPicker"),
+  storageModeLabel: document.querySelector("#storageModeLabel"),
+  storageModeDetail: document.querySelector("#storageModeDetail"),
+  authStatus: document.querySelector("#authStatus"),
+  authForm: document.querySelector("#authForm"),
+  authEmail: document.querySelector("#authEmail"),
+  authPassword: document.querySelector("#authPassword"),
+  loginBtn: document.querySelector("#loginBtn"),
+  signupBtn: document.querySelector("#signupBtn"),
+  accountActions: document.querySelector("#accountActions"),
+  syncCloudBtn: document.querySelector("#syncCloudBtn"),
+  logoutBtn: document.querySelector("#logoutBtn"),
+  cloudMessage: document.querySelector("#cloudMessage"),
   showArchivedToggle: document.querySelector("#showArchivedToggle"),
   addProjectBtn: document.querySelector("#addProjectBtn"),
   archiveProjectBtn: document.querySelector("#archiveProjectBtn"),
@@ -113,6 +127,10 @@ const percentFormatter = new Intl.NumberFormat("fr-FR", {
 
 let showArchivedProjects = false;
 let pendingInvoiceFile = null;
+let supabaseClient = null;
+let currentUser = null;
+let cloudSaveTimer = null;
+let isLoadingCloudState = false;
 let state = loadState();
 
 function emptyState() {
@@ -347,6 +365,7 @@ function normalizeInvoices(rawInvoices, nextState) {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  queueCloudSave();
 }
 
 function init() {
@@ -362,10 +381,19 @@ function init() {
   updateExpenseLineOptions();
   updateInvoiceLineOptions();
   attachEvents();
+  initCloud();
   render();
 }
 
 function attachEvents() {
+  elements.authForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    signIn();
+  });
+  elements.signupBtn.addEventListener("click", signUp);
+  elements.logoutBtn.addEventListener("click", signOut);
+  elements.syncCloudBtn.addEventListener("click", syncLocalStateToCloud);
+
   elements.projectPicker.addEventListener("change", () => {
     state.selectedProjectId = selectedProjectId();
     updateLotOptions();
@@ -496,6 +524,216 @@ function attachEvents() {
   elements.copyPreviousBtn.addEventListener("click", copyPreviousBudget);
   elements.exportCsvBtn.addEventListener("click", exportCsv);
   window.addEventListener("resize", renderCharts);
+}
+
+async function initCloud() {
+  const config = window.BUDGET_HYPERFLUID_SUPABASE || {};
+  const hasConfig = Boolean(config.url && config.anonKey);
+  const hasSdk = Boolean(window.supabase?.createClient);
+
+  if (!hasConfig || !hasSdk) {
+    updateCloudUi();
+    return;
+  }
+
+  supabaseClient = window.supabase.createClient(config.url, config.anonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
+
+  const { data, error } = await supabaseClient.auth.getSession();
+  if (error) {
+    setCloudMessage(error.message);
+    updateCloudUi();
+    return;
+  }
+
+  currentUser = data.session?.user || null;
+  updateCloudUi();
+
+  if (currentUser) {
+    await loadCloudState();
+  }
+
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    currentUser = session?.user || null;
+    updateCloudUi();
+    if (currentUser) {
+      await loadCloudState();
+    }
+  });
+}
+
+function updateCloudUi() {
+  const configured = Boolean(supabaseClient);
+  const signedIn = Boolean(currentUser);
+
+  elements.storageModeLabel.textContent = signedIn ? "Données cloud" : "Données locales";
+  elements.storageModeDetail.textContent = signedIn
+    ? `Synchronisées pour ${currentUser.email}`
+    : configured
+      ? "Connexion Supabase disponible"
+      : "Connexion cloud non configurée";
+  elements.authStatus.textContent = signedIn ? currentUser.email : configured ? "Non connecté" : "Mode local";
+  elements.authForm.classList.toggle("hidden", signedIn);
+  elements.accountActions.classList.toggle("hidden", !signedIn);
+  elements.authEmail.disabled = !configured;
+  elements.authPassword.disabled = !configured;
+  elements.loginBtn.disabled = !configured;
+  elements.signupBtn.disabled = !configured;
+
+  if (!configured) {
+    setCloudMessage("Ajoute ton URL Supabase et ta clé anonyme dans supabase-config.js pour activer les comptes.");
+  } else if (signedIn) {
+    setCloudMessage("Connecté. Les changements sont sauvegardés dans le cloud.");
+  } else {
+    setCloudMessage("Connecte-toi pour retrouver tes budgets depuis n'importe quel PC.");
+  }
+}
+
+function setCloudMessage(message) {
+  elements.cloudMessage.textContent = message;
+}
+
+async function signIn() {
+  if (!supabaseClient) {
+    return;
+  }
+
+  const email = elements.authEmail.value.trim();
+  const password = elements.authPassword.value;
+  if (!email || !password) {
+    setCloudMessage("Renseigne un email et un mot de passe.");
+    return;
+  }
+
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    setCloudMessage(error.message);
+    return;
+  }
+
+  currentUser = data.user;
+  elements.authPassword.value = "";
+  updateCloudUi();
+  await loadCloudState();
+}
+
+async function signUp() {
+  if (!supabaseClient) {
+    return;
+  }
+
+  const email = elements.authEmail.value.trim();
+  const password = elements.authPassword.value;
+  if (!email || !password) {
+    setCloudMessage("Renseigne un email et un mot de passe.");
+    return;
+  }
+
+  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) {
+    setCloudMessage(error.message);
+    return;
+  }
+
+  currentUser = data.user || currentUser;
+  elements.authPassword.value = "";
+  updateCloudUi();
+  setCloudMessage(data.user ? "Compte créé. Synchronisation prête." : "Compte créé. Vérifie l'email si Supabase demande une confirmation.");
+
+  if (currentUser) {
+    await syncLocalStateToCloud();
+  }
+}
+
+async function signOut() {
+  if (!supabaseClient) {
+    return;
+  }
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+  updateCloudUi();
+}
+
+function queueCloudSave() {
+  if (!supabaseClient || !currentUser || isLoadingCloudState) {
+    return;
+  }
+
+  window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = window.setTimeout(() => {
+    saveCloudState().catch((error) => setCloudMessage(error.message));
+  }, 900);
+}
+
+async function loadCloudState() {
+  if (!supabaseClient || !currentUser) {
+    return;
+  }
+
+  isLoadingCloudState = true;
+  const { data, error } = await supabaseClient
+    .from(CLOUD_TABLE)
+    .select("data")
+    .eq("user_id", currentUser.id)
+    .eq("name", CLOUD_WORKSPACE_NAME)
+    .maybeSingle();
+
+  if (error) {
+    isLoadingCloudState = false;
+    setCloudMessage(error.message);
+    return;
+  }
+
+  if (data?.data && Object.keys(data.data).length > 0) {
+    state = normalizeState(data.data);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    populateProjects();
+    updateLotOptions();
+    updateExpenseLineOptions();
+    updateInvoiceLineOptions();
+    render();
+    setCloudMessage("Données cloud chargées.");
+  } else {
+    await saveCloudState();
+    setCloudMessage("Aucun espace cloud existant : données locales envoyées.");
+  }
+
+  isLoadingCloudState = false;
+}
+
+async function saveCloudState() {
+  if (!supabaseClient || !currentUser) {
+    return;
+  }
+
+  const { error } = await supabaseClient.from(CLOUD_TABLE).upsert(
+    {
+      user_id: currentUser.id,
+      name: CLOUD_WORKSPACE_NAME,
+      data: state,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,name" },
+  );
+
+  if (error) {
+    setCloudMessage(error.message);
+    throw error;
+  }
+
+  setCloudMessage("Synchronisation cloud terminée.");
+}
+
+async function syncLocalStateToCloud() {
+  if (!supabaseClient || !currentUser) {
+    setCloudMessage("Connecte-toi avant de synchroniser.");
+    return;
+  }
+  await saveCloudState();
 }
 
 function populateProjects() {
