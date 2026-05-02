@@ -19,8 +19,11 @@
 
         <nav class="nav-list" aria-label="Navigation principale">
           <a href="#dashboard">Tableau de bord</a>
+          <a href="#consolidation">Consolidation</a>
+          <a href="#lots">Lots</a>
           <a href="#budgets">Budgets</a>
           <a href="#depenses">Dépenses</a>
+          <a href="#factures">Factures</a>
           <a href="#alertes">Alertes</a>
         </nav>
 
@@ -91,6 +94,119 @@
           </article>
         </section>
 
+        <section id="consolidation" class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="section-kicker">Consolidation</p>
+              <h2>Vue globale du projet</h2>
+            </div>
+          </div>
+
+          <div class="metrics-grid compact-metrics" aria-label="Indicateurs globaux du projet">
+            <article class="metric-card small">
+              <span>Budget total prévu</span>
+              <strong id="globalPlannedTotal">0 €</strong>
+            </article>
+            <article class="metric-card small">
+              <span>Réel total</span>
+              <strong id="globalActualTotal">0 €</strong>
+            </article>
+            <article class="metric-card small">
+              <span>Écart global</span>
+              <strong id="globalVarianceTotal">0 €</strong>
+            </article>
+            <article class="metric-card small">
+              <span>Reste à consommer</span>
+              <strong id="globalRemainingTotal">0 €</strong>
+            </article>
+            <article class="metric-card small">
+              <span>Taux global</span>
+              <strong id="globalUsageRate">0 %</strong>
+            </article>
+          </div>
+
+          <div class="chart-feature">
+            <canvas id="monthlyComparisonChart" class="chart-canvas tall" aria-label="Budget prévu et réel dépensé par mois"></canvas>
+          </div>
+        </section>
+
+        <section id="lots" class="split-grid align-start">
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Lots</p>
+                <h2>Nouveau lot projet</h2>
+              </div>
+            </div>
+
+            <form id="lotForm" class="expense-form">
+              <label class="field">
+                <span>Nom du lot</span>
+                <input id="lotName" type="text" placeholder="Lot 1 - Discovery" required />
+              </label>
+
+              <label class="field">
+                <span>Statut</span>
+                <select id="lotStatus">
+                  <option value="Prévu">Prévu</option>
+                  <option value="En cours">En cours</option>
+                  <option value="Terminé">Terminé</option>
+                  <option value="En pause">En pause</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Date de début</span>
+                <input id="lotStartDate" type="date" />
+              </label>
+
+              <label class="field">
+                <span>Date de fin</span>
+                <input id="lotEndDate" type="date" />
+              </label>
+
+              <label class="field">
+                <span>Budget prévu</span>
+                <input id="lotBudget" type="text" inputmode="decimal" placeholder="0" />
+              </label>
+
+              <label class="field full-span">
+                <span>Description</span>
+                <textarea id="lotDescription" rows="3" placeholder="Objectif, périmètre, livrables..."></textarea>
+              </label>
+
+              <button class="button primary full-span" type="submit">
+                Ajouter le lot
+              </button>
+            </form>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Lots</p>
+                <h2>Suivi des lots</h2>
+              </div>
+            </div>
+
+            <div class="table-shell">
+              <table class="data-table lots-table">
+                <thead>
+                  <tr>
+                    <th>Lot</th>
+                    <th>Statut</th>
+                    <th>Budget</th>
+                    <th>Réel</th>
+                    <th>Conso.</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="lotTableBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
         <section id="budgets" class="panel">
           <div class="panel-header">
             <div>
@@ -104,6 +220,7 @@
               <thead>
                 <tr>
                   <th>Catégorie</th>
+                  <th>Lot</th>
                   <th>Budget prévu</th>
                   <th>Réel</th>
                   <th>Écart</th>
@@ -121,7 +238,7 @@
             <div class="panel-header">
               <div>
                 <p class="section-kicker">Catégories</p>
-                <h2>Lecture du mois</h2>
+                <h2>Consommation par catégorie</h2>
               </div>
             </div>
             <canvas id="categoryChart" class="chart-canvas" aria-label="Budget et dépenses par catégorie"></canvas>
@@ -135,6 +252,28 @@
               </div>
             </div>
             <canvas id="trendChart" class="chart-canvas" aria-label="Budget et dépenses des six derniers mois"></canvas>
+          </article>
+        </section>
+
+        <section class="split-grid" aria-label="Graphiques complémentaires">
+          <article class="panel chart-panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Prestataires</p>
+                <h2>Dépenses par prestataire</h2>
+              </div>
+            </div>
+            <canvas id="vendorChart" class="chart-canvas" aria-label="Dépenses par prestataire"></canvas>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Lots</p>
+                <h2>Consommation par lot</h2>
+              </div>
+            </div>
+            <canvas id="lotChart" class="chart-canvas" aria-label="Consommation par lot"></canvas>
           </article>
         </section>
 
@@ -164,13 +303,18 @@
               </label>
 
               <label class="field">
+                <span>Lot</span>
+                <select id="expenseLot"></select>
+              </label>
+
+              <label class="field">
                 <span>Fournisseur</span>
                 <input id="expenseVendor" type="text" placeholder="AWS, Stripe, Notion..." required />
               </label>
 
               <label class="field">
                 <span>Montant réel</span>
-                <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="0.00" required />
+                <input id="expenseAmount" type="text" inputmode="decimal" placeholder="0" required />
               </label>
 
               <label class="field">
@@ -213,6 +357,111 @@
                   </tr>
                 </thead>
                 <tbody id="expenseTableBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section id="factures" class="split-grid align-start">
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Factures</p>
+                <h2>Importer et valider</h2>
+              </div>
+            </div>
+
+            <form id="invoiceForm" class="expense-form">
+              <label class="field full-span">
+                <span>Fichier PDF/JPG/PNG</span>
+                <input id="invoiceFile" type="file" accept="application/pdf,image/png,image/jpeg" />
+              </label>
+
+              <label class="field">
+                <span>Prestataire</span>
+                <input id="invoiceVendor" type="text" placeholder="Nom du prestataire" required />
+              </label>
+
+              <label class="field">
+                <span>Numéro facture</span>
+                <input id="invoiceNumber" type="text" placeholder="FAC-001" />
+              </label>
+
+              <label class="field">
+                <span>Date facture</span>
+                <input id="invoiceDate" type="date" required />
+              </label>
+
+              <label class="field">
+                <span>Mois budget</span>
+                <input id="invoiceMonth" type="month" required />
+              </label>
+
+              <label class="field">
+                <span>Montant TTC</span>
+                <input id="invoiceAmount" type="text" inputmode="decimal" placeholder="0" required />
+              </label>
+
+              <label class="field">
+                <span>TVA</span>
+                <input id="invoiceVat" type="text" inputmode="decimal" placeholder="0" />
+              </label>
+
+              <label class="field">
+                <span>Catégorie</span>
+                <select id="invoiceCategory" required></select>
+              </label>
+
+              <label class="field">
+                <span>Ligne budget</span>
+                <select id="invoiceLine" required></select>
+              </label>
+
+              <label class="field">
+                <span>Lot</span>
+                <select id="invoiceLot"></select>
+              </label>
+
+              <label class="field">
+                <span>Statut</span>
+                <select id="invoiceStatus">
+                  <option value="À valider">À valider</option>
+                  <option value="Validée">Validée</option>
+                </select>
+              </label>
+
+              <label class="field full-span">
+                <span>Note OCR / validation</span>
+                <textarea id="invoiceNote" rows="3" placeholder="Les informations extraites automatiquement sont à vérifier avant validation."></textarea>
+              </label>
+
+              <button class="button primary full-span" type="submit">
+                Enregistrer la facture
+              </button>
+            </form>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Factures</p>
+                <h2>Factures du projet</h2>
+              </div>
+            </div>
+
+            <div class="table-shell expense-table-shell">
+              <table class="data-table invoice-table">
+                <thead>
+                  <tr>
+                    <th>Facture</th>
+                    <th>Prestataire</th>
+                    <th>Lot</th>
+                    <th>Montant</th>
+                    <th>Statut</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="invoiceTableBody"></tbody>
               </table>
             </div>
           </article>
