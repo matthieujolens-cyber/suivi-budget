@@ -40,14 +40,23 @@ const defaultLineTemplates = [
 
 const elements = {
   projectPicker: document.querySelector("#projectPicker"),
+  appShell: document.querySelector(".app-shell"),
   storageModeLabel: document.querySelector("#storageModeLabel"),
   storageModeDetail: document.querySelector("#storageModeDetail"),
+  authScreen: document.querySelector("#authScreen"),
+  authPageForm: document.querySelector("#authPageForm"),
+  authPageEmail: document.querySelector("#authPageEmail"),
+  authPagePassword: document.querySelector("#authPagePassword"),
+  authNewPassword: document.querySelector("#authNewPassword"),
+  authPasswordField: document.querySelector("#authPasswordField"),
+  authNewPasswordField: document.querySelector("#authNewPasswordField"),
+  authSubmitBtn: document.querySelector("#authSubmitBtn"),
+  authPageMessage: document.querySelector("#authPageMessage"),
+  authLocalBtn: document.querySelector("#authLocalBtn"),
+  authBackToLoginBtn: document.querySelector("#authBackToLoginBtn"),
+  authTabs: document.querySelectorAll("[data-auth-mode]"),
   authStatus: document.querySelector("#authStatus"),
-  authForm: document.querySelector("#authForm"),
-  authEmail: document.querySelector("#authEmail"),
-  authPassword: document.querySelector("#authPassword"),
-  loginBtn: document.querySelector("#loginBtn"),
-  signupBtn: document.querySelector("#signupBtn"),
+  openAuthBtn: document.querySelector("#openAuthBtn"),
   accountActions: document.querySelector("#accountActions"),
   syncCloudBtn: document.querySelector("#syncCloudBtn"),
   logoutBtn: document.querySelector("#logoutBtn"),
@@ -131,6 +140,9 @@ let supabaseClient = null;
 let currentUser = null;
 let cloudSaveTimer = null;
 let isLoadingCloudState = false;
+let authMode = "login";
+let passwordRecoveryMode = false;
+let localBypass = false;
 let state = loadState();
 
 function emptyState() {
@@ -386,11 +398,23 @@ function init() {
 }
 
 function attachEvents() {
-  elements.authForm.addEventListener("submit", (event) => {
+  elements.authPageForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    signIn();
+    handleAuthSubmit();
   });
-  elements.signupBtn.addEventListener("click", signUp);
+  elements.authTabs.forEach((button) => {
+    button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
+  });
+  elements.authLocalBtn.addEventListener("click", () => {
+    localBypass = true;
+    updateCloudUi();
+    setAuthMessage("Mode local activé. Tes données restent dans ce navigateur.", "success");
+  });
+  elements.authBackToLoginBtn.addEventListener("click", () => setAuthMode("login"));
+  elements.openAuthBtn.addEventListener("click", () => {
+    localBypass = false;
+    updateCloudUi({ forceAuth: true });
+  });
   elements.logoutBtn.addEventListener("click", signOut);
   elements.syncCloudBtn.addEventListener("click", syncLocalStateToCloud);
 
@@ -532,6 +556,7 @@ async function initCloud() {
   const hasSdk = Boolean(window.supabase?.createClient);
 
   if (!hasConfig || !hasSdk) {
+    localBypass = true;
     updateCloudUi();
     return;
   }
@@ -545,7 +570,7 @@ async function initCloud() {
 
   const { data, error } = await supabaseClient.auth.getSession();
   if (error) {
-    setCloudMessage(error.message);
+    setAuthMessage(error.message, "error");
     updateCloudUi();
     return;
   }
@@ -557,18 +582,25 @@ async function initCloud() {
     await loadCloudState();
   }
 
-  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
     currentUser = session?.user || null;
+    if (event === "PASSWORD_RECOVERY") {
+      passwordRecoveryMode = true;
+      setAuthMode("update");
+      localBypass = false;
+      setAuthMessage("Choisis un nouveau mot de passe pour terminer la récupération.", "success");
+    }
     updateCloudUi();
-    if (currentUser) {
+    if (currentUser && event !== "PASSWORD_RECOVERY") {
       await loadCloudState();
     }
   });
 }
 
-function updateCloudUi() {
+function updateCloudUi(options = {}) {
   const configured = Boolean(supabaseClient);
   const signedIn = Boolean(currentUser);
+  const showAuthScreen = options.forceAuth || passwordRecoveryMode || (configured && !signedIn && !localBypass);
 
   elements.storageModeLabel.textContent = signedIn ? "Données cloud" : "Données locales";
   elements.storageModeDetail.textContent = signedIn
@@ -577,24 +609,95 @@ function updateCloudUi() {
       ? "Connexion Supabase disponible"
       : "Connexion cloud non configurée";
   elements.authStatus.textContent = signedIn ? currentUser.email : configured ? "Non connecté" : "Mode local";
-  elements.authForm.classList.toggle("hidden", signedIn);
-  elements.accountActions.classList.toggle("hidden", !signedIn);
-  elements.authEmail.disabled = !configured;
-  elements.authPassword.disabled = !configured;
-  elements.loginBtn.disabled = !configured;
-  elements.signupBtn.disabled = !configured;
+  elements.authScreen.classList.toggle("hidden", !showAuthScreen);
+  elements.appShell.classList.toggle("auth-locked", showAuthScreen);
+  elements.openAuthBtn.classList.toggle("hidden", signedIn);
+  elements.syncCloudBtn.classList.toggle("hidden", !signedIn);
+  elements.logoutBtn.classList.toggle("hidden", !signedIn);
+  elements.authPageEmail.disabled = !configured || authMode === "update";
+  elements.authPagePassword.disabled = !configured || authMode === "reset" || authMode === "update";
+  elements.authNewPassword.disabled = !configured || authMode !== "update";
+  elements.authSubmitBtn.disabled = !configured;
+  elements.authLocalBtn.classList.toggle("hidden", signedIn || passwordRecoveryMode);
+  elements.authBackToLoginBtn.classList.toggle("hidden", authMode === "login" || passwordRecoveryMode);
 
   if (!configured) {
     setCloudMessage("Ajoute ton URL Supabase et ta clé anonyme dans supabase-config.js pour activer les comptes.");
+    setAuthMessage("Supabase n'est pas configuré. Tu peux continuer en local, mais les données resteront sur ce navigateur.", "error");
   } else if (signedIn) {
     setCloudMessage("Connecté. Les changements sont sauvegardés dans le cloud.");
   } else {
     setCloudMessage("Connecte-toi pour retrouver tes budgets depuis n'importe quel PC.");
+    if (!elements.authPageMessage.textContent) {
+      setAuthMessage("Connecte-toi, crée un compte ou récupère ton mot de passe.", "");
+    }
   }
+
+  renderAuthMode();
 }
 
 function setCloudMessage(message) {
   elements.cloudMessage.textContent = message;
+}
+
+function setAuthMessage(message, tone = "") {
+  elements.authPageMessage.textContent = message;
+  elements.authPageMessage.classList.toggle("error", tone === "error");
+  elements.authPageMessage.classList.toggle("success", tone === "success");
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  passwordRecoveryMode = mode === "update";
+  renderAuthMode();
+}
+
+function renderAuthMode() {
+  elements.authTabs[0]?.parentElement.classList.toggle("hidden", authMode === "update");
+  elements.authTabs.forEach((button) => {
+    const active = button.dataset.authMode === authMode;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+
+  elements.authPasswordField.classList.toggle("hidden", authMode === "reset" || authMode === "update");
+  elements.authNewPasswordField.classList.toggle("hidden", authMode !== "update");
+  elements.authBackToLoginBtn.classList.toggle("hidden", authMode === "login" || authMode === "update");
+  elements.authPagePassword.setAttribute("autocomplete", authMode === "signup" ? "new-password" : "current-password");
+
+  if (authMode === "login") {
+    elements.authSubmitBtn.textContent = "Se connecter";
+    elements.authPagePassword.required = true;
+    elements.authNewPassword.required = false;
+  } else if (authMode === "signup") {
+    elements.authSubmitBtn.textContent = "Créer mon compte";
+    elements.authPagePassword.required = true;
+    elements.authNewPassword.required = false;
+  } else if (authMode === "reset") {
+    elements.authSubmitBtn.textContent = "Envoyer le lien";
+    elements.authPagePassword.required = false;
+    elements.authNewPassword.required = false;
+  } else {
+    elements.authSubmitBtn.textContent = "Mettre à jour le mot de passe";
+    elements.authPagePassword.required = false;
+    elements.authNewPassword.required = true;
+  }
+}
+
+async function handleAuthSubmit() {
+  if (authMode === "login") {
+    await signIn();
+    return;
+  }
+  if (authMode === "signup") {
+    await signUp();
+    return;
+  }
+  if (authMode === "reset") {
+    await requestPasswordReset();
+    return;
+  }
+  await updateRecoveredPassword();
 }
 
 async function signIn() {
@@ -602,22 +705,24 @@ async function signIn() {
     return;
   }
 
-  const email = elements.authEmail.value.trim();
-  const password = elements.authPassword.value;
+  const email = elements.authPageEmail.value.trim();
+  const password = elements.authPagePassword.value;
   if (!email || !password) {
-    setCloudMessage("Renseigne un email et un mot de passe.");
+    setAuthMessage("Renseigne un email et un mot de passe.", "error");
     return;
   }
 
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) {
-    setCloudMessage(error.message);
+    setAuthMessage(translateAuthError(error.message), "error");
     return;
   }
 
   currentUser = data.user;
-  elements.authPassword.value = "";
+  localBypass = false;
+  elements.authPagePassword.value = "";
   updateCloudUi();
+  setAuthMessage("Connexion réussie.", "success");
   await loadCloudState();
 }
 
@@ -626,27 +731,93 @@ async function signUp() {
     return;
   }
 
-  const email = elements.authEmail.value.trim();
-  const password = elements.authPassword.value;
+  const email = elements.authPageEmail.value.trim();
+  const password = elements.authPagePassword.value;
   if (!email || !password) {
-    setCloudMessage("Renseigne un email et un mot de passe.");
+    setAuthMessage("Renseigne un email et un mot de passe.", "error");
     return;
   }
 
-  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  if (password.length < 8) {
+    setAuthMessage("Choisis un mot de passe d'au moins 8 caractères.", "error");
+    return;
+  }
+
+  const redirectTo = authRedirectUrl();
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: redirectTo ? { emailRedirectTo: redirectTo } : undefined,
+  });
   if (error) {
-    setCloudMessage(error.message);
+    setAuthMessage(translateAuthError(error.message), "error");
     return;
   }
 
-  currentUser = data.user || currentUser;
-  elements.authPassword.value = "";
+  currentUser = data.session?.user || currentUser;
+  elements.authPagePassword.value = "";
   updateCloudUi();
-  setCloudMessage(data.user ? "Compte créé. Synchronisation prête." : "Compte créé. Vérifie l'email si Supabase demande une confirmation.");
+  setAuthMessage(
+    data.session
+      ? "Compte créé et connecté. Tes données locales vont être envoyées dans le cloud."
+      : "Compte créé. Si Supabase demande une confirmation, ouvre l'email reçu avant de te connecter.",
+    "success",
+  );
 
   if (currentUser) {
     await syncLocalStateToCloud();
   }
+}
+
+async function requestPasswordReset() {
+  if (!supabaseClient) {
+    return;
+  }
+
+  const email = elements.authPageEmail.value.trim();
+  if (!email) {
+    setAuthMessage("Renseigne ton email pour recevoir le lien de récupération.", "error");
+    return;
+  }
+
+  const redirectTo = authRedirectUrl();
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : {});
+  if (error) {
+    setAuthMessage(translateAuthError(error.message), "error");
+    return;
+  }
+
+  setAuthMessage(
+    redirectTo
+      ? "Lien envoyé si ce compte existe. Vérifie ta boîte mail et tes spams."
+      : "Lien envoyé si ce compte existe. Pour terminer le changement, publie l'application ou configure l'URL du site dans Supabase.",
+    "success",
+  );
+}
+
+async function updateRecoveredPassword() {
+  if (!supabaseClient) {
+    return;
+  }
+
+  const password = elements.authNewPassword.value;
+  if (!password || password.length < 8) {
+    setAuthMessage("Le nouveau mot de passe doit contenir au moins 8 caractères.", "error");
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.updateUser({ password });
+  if (error) {
+    setAuthMessage(translateAuthError(error.message), "error");
+    return;
+  }
+
+  passwordRecoveryMode = false;
+  authMode = "login";
+  elements.authNewPassword.value = "";
+  localBypass = false;
+  updateCloudUi();
+  setAuthMessage("Mot de passe mis à jour. Tu es connecté.", "success");
 }
 
 async function signOut() {
@@ -655,7 +826,36 @@ async function signOut() {
   }
   await supabaseClient.auth.signOut();
   currentUser = null;
+  localBypass = false;
+  setAuthMode("login");
   updateCloudUi();
+}
+
+function authRedirectUrl() {
+  const url = new URL(window.location.href);
+  if (!["http:", "https:"].includes(url.protocol)) {
+    return "";
+  }
+  url.hash = "";
+  url.search = "";
+  return url.toString();
+}
+
+function translateAuthError(message) {
+  const text = String(message || "");
+  if (/invalid login credentials/i.test(text)) {
+    return "Email ou mot de passe incorrect. Si tu viens de créer le compte, vérifie aussi l'email de confirmation.";
+  }
+  if (/email not confirmed/i.test(text)) {
+    return "Ton email n'est pas encore confirmé. Ouvre l'email envoyé par Supabase puis réessaie.";
+  }
+  if (/user already registered/i.test(text)) {
+    return "Ce compte existe déjà. Utilise Connexion ou Mot de passe oublié.";
+  }
+  if (/password/i.test(text) && /weak|short|length/i.test(text)) {
+    return "Le mot de passe est trop court ou trop simple.";
+  }
+  return text || "Une erreur est survenue.";
 }
 
 function queueCloudSave() {

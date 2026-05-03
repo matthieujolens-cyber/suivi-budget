@@ -8,7 +8,7 @@ Double-clique sur `index.html`.
 
 L'application fonctionne sans installation. Par défaut, les données sont sauvegardées dans le navigateur avec `localStorage`.
 
-Si Supabase est configuré, tu peux te connecter avec un compte utilisateur et synchroniser les données dans une base cloud.
+Si Supabase est configuré, une page de connexion s'affiche au démarrage. Tu peux te connecter, créer un compte, récupérer un mot de passe oublié ou continuer en local.
 
 ## Ce que tu peux faire
 
@@ -68,7 +68,16 @@ window.BUDGET_HYPERFLUID_SUPABASE = {
 };
 ```
 
-Après ça, recharge l'application. Le bloc `Compte` dans la barre latérale permettra de créer un compte, se connecter, se déconnecter et synchroniser.
+Après ça, recharge l'application. L'écran de connexion permettra de créer un compte, se connecter, récupérer un mot de passe et synchroniser.
+
+### Mot de passe oublié
+
+Le bouton `Mot de passe oublié` envoie un lien de récupération Supabase. Pour que le lien revienne correctement dans l'application une fois publiée, configure aussi dans Supabase :
+
+- `Authentication > URL Configuration > Site URL` avec l'URL de ton application ;
+- `Authentication > URL Configuration > Redirect URLs` avec cette même URL.
+
+Si tu testes uniquement en ouvrant `index.html` en local, Supabase peut envoyer le mail mais ne peut pas toujours revenir sur une URL `file://`. Le flux sera pleinement fiable une fois l'application hébergée.
 
 La table cloud est protégée par Row Level Security : chaque utilisateur ne lit et ne modifie que ses propres données.
 
