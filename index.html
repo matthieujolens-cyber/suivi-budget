@@ -7,6 +7,55 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <section id="authScreen" class="auth-screen hidden" aria-label="Connexion Budget Hyperfluid">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <img src="assets/hyperfluid-logo.png" alt="Hyperfluid" />
+          <span>Budget Hyperfluid</span>
+        </div>
+
+        <div class="auth-copy">
+          <p class="eyebrow">Pilotage budgétaire projet</p>
+          <h1>Connecte-toi à ton espace budget</h1>
+          <p>
+            Retrouve tes projets, lots, budgets, dépenses et factures depuis n'importe quel ordinateur.
+          </p>
+        </div>
+
+        <div class="auth-tabs" role="tablist" aria-label="Choix de connexion">
+          <button id="authLoginTab" class="auth-tab active" type="button" role="tab" aria-selected="true" data-auth-mode="login">Connexion</button>
+          <button id="authSignupTab" class="auth-tab" type="button" role="tab" aria-selected="false" data-auth-mode="signup">Créer un compte</button>
+          <button id="authResetTab" class="auth-tab" type="button" role="tab" aria-selected="false" data-auth-mode="reset">Mot de passe oublié</button>
+        </div>
+
+        <form id="authPageForm" class="auth-page-form">
+          <label class="field">
+            <span>Email</span>
+            <input id="authPageEmail" type="email" autocomplete="email" placeholder="email@hyperfluid.fr" required />
+          </label>
+
+          <label id="authPasswordField" class="field">
+            <span>Mot de passe</span>
+            <input id="authPagePassword" type="password" autocomplete="current-password" placeholder="8 caractères minimum" />
+          </label>
+
+          <label id="authNewPasswordField" class="field hidden">
+            <span>Nouveau mot de passe</span>
+            <input id="authNewPassword" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe" />
+          </label>
+
+          <button id="authSubmitBtn" class="button primary" type="submit">Se connecter</button>
+        </form>
+
+        <div class="auth-secondary-actions">
+          <button id="authLocalBtn" class="link-button" type="button">Continuer en local</button>
+          <button id="authBackToLoginBtn" class="link-button hidden" type="button">Retour connexion</button>
+        </div>
+
+        <p id="authPageMessage" class="auth-message" aria-live="polite"></p>
+      </div>
+    </section>
+
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
@@ -38,22 +87,8 @@
             <span id="authStatus">Mode local</span>
           </div>
 
-          <form id="authForm" class="account-form">
-            <label>
-              <span>Email</span>
-              <input id="authEmail" type="email" autocomplete="email" placeholder="email@hyperfluid.fr" />
-            </label>
-            <label>
-              <span>Mot de passe</span>
-              <input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••" />
-            </label>
-            <div class="account-actions">
-              <button id="loginBtn" class="button secondary" type="submit">Connexion</button>
-              <button id="signupBtn" class="button secondary" type="button">Créer</button>
-            </div>
-          </form>
-
-          <div id="accountActions" class="account-actions hidden">
+          <div id="accountActions" class="account-actions">
+            <button id="openAuthBtn" class="button secondary" type="button">Connexion</button>
             <button id="syncCloudBtn" class="button secondary" type="button">Synchroniser</button>
             <button id="logoutBtn" class="button danger" type="button">Déconnexion</button>
           </div>
